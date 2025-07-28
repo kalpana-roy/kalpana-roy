@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dice Game with Animation</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 1em;
+      background: #f2f5f9;
+      text-align: center;
+    }
+    h1 {
+      font-size: 2rem;
+    }
+    .players {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 1em;
+    }
+    .player {
+      padding: 0.6em 1em;
+      border: 2px solid #ccc;
+      border-radius: 10px;
+      transition: background 0.4s, border 0.4s;
+    }
+    .active {
+      background: #e6ffe6;
+      border-color: #28a745;
+    }
+    .dice-container {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 1em 0;
+    }
+    .dice {
+      font-size: 2.5rem;
+      width: 3em;
+      height: 3em;
+      line-height: 3em;
+      background: white;
+      border: 2px solid #555;
+      border-radius: 8px;
+      display: inline-block;
+      animation: roll 0.4s ease;
+    }
+    @keyframes roll {
+      0% { transform: scale(1.2) rotate(0deg); }
+      50% { transform: scale(0.9) rotate(180deg); }
+      100% { transform: scale(1) rotate(360deg); }
+    }
+    .scoreboard {
+      font-size: 1.2em;
+      margin: 1em 0;
+    }
+    .score-flash {
+      animation: scoreFlash 0.5s;
+    }
+    @keyframes scoreFlash {
+      0% { background: #ffffcc; }
+      100% { background: transparent; }
+    }
+    button {
+      margin: 0.5em;
+      padding: 0.6em 1.4em;
+      font-size: 1em;
+      border: none;
+      border-radius: 6px;
+      background: #007bff;
+      color: white;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #aaa;
+      cursor: not-allowed;
+    }
+    .history {
+      max-width: 400px;
+      margin: 2em auto 0;
+      text-align: left;
+    }
+    .history h3 {
+      margin-bottom: 0.4em;
+    }
+    .history ul {
+      list-style: none;
+      padding: 0;
+    }
+    .history li {
+      background: white;
+      padding: 0.5em;
+      margin-bottom: 0.3em;
+      border-radius: 6px;
+      animation: fadeIn 0.4s ease-in;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @media (max-width: 600px) {
+      .players {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🎲 Animated Dice Game</h1>
+
+  <div class="players">
+    <div id="player1" class="player active">Player 1<br>Score: <span id="score1">0</span></div>
+    <div id="player2" class="player">Player 2<br>Score: <span id="score2">0</span></div>
+  </div>
+
+  <div id="diceContainer" class="dice-container"></div>
+
+  <button onclick="rollDice()">Roll Dice</button>
+  <button onclick="nextTurn()">Next Turn</button>
+  <button onclick="resetGame()">Reset Game</button>
+
+  <div class="scoreboard">
+    Turn Score: <span id="turnScore">0</span>
+  </div>
+
+  <div class="history">
+    <h3>History</h3>
+    <ul id="historyLog"></ul>
+  </div>
+
+  <script>
+    const winRule = {
+      "Category 3": {
+        "111": 1000,
+        "666": 600,
+        "555": 500,
+        "444": 400,
+        "333": 300,
+        "222": 200
+      },
+      "Category 1": {
+        "1": 100,
+        "5": 50
+      }
+    };
+
+    let currentPlayer = 1;
+    let scores = { 1: 0, 2: 0 };
+    let turnScore = 0;
+
+    function rollDice() {
+      const diceRoll = Array.from({ length: 5 }, () => Math.floor(Math.random() * 6) + 1);
+      displayDice(diceRoll);
+      const rollScore = calculateScore(diceRoll);
+      turnScore += rollScore;
+      const turnEl = document.getElementById("turnScore");
+      turnEl.innerText = turnScore;
+      turnEl.classList.add("score-flash");
+      setTimeout(() => turnEl.classList.remove("score-flash"), 500);
+      logHistory(`Player ${currentPlayer} rolled ${diceRoll.join(", ")} → +${rollScore}`);
+    }
+
+    function calculateScore(diceRoll) {
+      const counts = {};
+      let score = 0;
+      for (let die of diceRoll) {
+        counts[die] = (counts[die] || 0) + 1;
+      }
+
+      for (let num = 1; num <= 6; num++) {
+        if (counts[num] >= 3) {
+          const tripleKey = `${num}${num}${num}`;
+          score += winRule["Category 3"][tripleKey] || 0;
+          counts[num] -= 3;
+        }
+      }
+
+      for (let num of [1, 5]) {
+        if (counts[num]) {
+          score += counts[num] * winRule["Category 1"][String(num)];
+        }
+      }
+
+      return score;
+    }
+
+    function displayDice(rolls) {
+      const container = document.getElementById("diceContainer");
+      container.innerHTML = "";
+      const diceFaces = ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
+      rolls.forEach(num => {
+        const div = document.createElement("div");
+        div.className = "dice";
+        div.textContent = diceFaces[num - 1];
+        container.appendChild(div);
+      });
+    }
+
+    function nextTurn() {
+      scores[currentPlayer] += turnScore;
+      const scoreEl = document.getElementById(`score${currentPlayer}`);
+      scoreEl.innerText = scores[currentPlayer];
+      scoreEl.classList.add("score-flash");
+      setTimeout(() => scoreEl.classList.remove("score-flash"), 500);
+
+      logHistory(`Player ${currentPlayer} ends turn → Total: ${scores[currentPlayer]}`);
+      turnScore = 0;
+      document.getElementById("turnScore").innerText = 0;
+
+      document.getElementById(`player${currentPlayer}`).classList.remove("active");
+      currentPlayer = currentPlayer === 1 ? 2 : 1;
+      document.getElementById(`player${currentPlayer}`).classList.add("active");
+    }
+
+    function resetGame() {
+      currentPlayer = 1;
+      scores = { 1: 0, 2: 0 };
+      turnScore = 0;
+      document.getElementById("score1").innerText = "0";
+      document.getElementById("score2").innerText = "0";
+      document.getElementById("turnScore").innerText = "0";
+      document.getElementById("historyLog").innerHTML = "";
+      document.getElementById("diceContainer").innerHTML = "";
+      document.getElementById("player1").classList.add("active");
+      document.getElementById("player2").classList.remove("active");
+      logHistory("🔄 Game Reset");
+    }
+
+    function logHistory(message) {
+      const log = document.getElementById("historyLog");
+      const li = document.createElement("li");
+      li.textContent = message;
+      log.prepend(li);
+    }
+  </script>
+</body>
+</html>
